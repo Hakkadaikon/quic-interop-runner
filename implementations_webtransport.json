@@ -25,7 +25,7 @@
     "role": "both"
   },
   "wired": {
-    "image": "wired-interop-wt",
+    "image": "ghcr.io/hakkadaikon/wired-interop-wt:latest",
     "url": "https://github.com/Hakkadaikon/wired",
     "role": "server"
   }
