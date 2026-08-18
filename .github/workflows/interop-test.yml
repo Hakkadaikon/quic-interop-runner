@@ -49,7 +49,7 @@ jobs:
       - name: Download quic-network-simulator image
         uses: actions/download-artifact@v8
         with:
-          name: images-quic-network-simulator
+          name: images-${{ inputs.protocol }}-quic-network-simulator
       - name: Download ${{ inputs.server }} Docker image
         uses: actions/download-artifact@v8
         with:
@@ -67,7 +67,7 @@ jobs:
       - name: Download quic-interop-iperf-endpoint image
         uses: actions/download-artifact@v8
         with:
-          name: images-quic-interop-iperf-endpoint
+          name: images-${{ inputs.protocol }}-quic-interop-iperf-endpoint
       - name: Load quic-interop-iperf-endpoint docker image
         run: docker load --input quic-interop-iperf-endpoint.tar.zst
       - run: docker image ls

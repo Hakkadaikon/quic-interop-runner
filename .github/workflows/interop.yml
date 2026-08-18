@@ -103,7 +103,7 @@ jobs:
     - name: Upload result
       uses: actions/upload-artifact@v7
       with:
-        name: images-${{ matrix.image }}
+        name: images-${{ inputs.protocol }}-${{ matrix.image }}
         path: ${{ matrix.image }}.tar.zst
         if-no-files-found: error
   docker-pull-images:
@@ -162,7 +162,7 @@ jobs:
       - name: Download results
         uses: actions/download-artifact@v8
         with:
-          pattern: results-*
+          pattern: results-${{ needs.config.outputs.protocol }}-*
       - name: Fetch prior result for partial re-run merge
         if: ${{ inputs.server != '' && vars.VERCEL_PROJECT_URL != '' }}
         run: |
@@ -183,7 +183,7 @@ jobs:
       - name: Upload result to artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: result-aggregated
+          name: result-aggregated-${{ needs.config.outputs.protocol }}
           path: result.json
       - name: Upload logs to interop.seemann.io
         uses: burnett01/rsync-deployments@dc0d5d44c4728aad3f02154a87309809e62a960f # v8.0.4
