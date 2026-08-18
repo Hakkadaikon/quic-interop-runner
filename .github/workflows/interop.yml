@@ -17,6 +17,10 @@ on:
       run_measurements:
         required: true
         type: boolean
+      server:
+        description: "Comma-separated server names to limit this run to (default: all servers in implementations_file)"
+        required: false
+        type: string
 
 jobs:
   config:
@@ -50,8 +54,16 @@ jobs:
           python-version: 3.12
       - name: Determine servers
         id: set-servers
+        env:
+          SERVER_FILTER: ${{ inputs.server }}
         run: |
-          SERVERS=$(jq -c 'with_entries(select(.value.role == "server" or .value.role == "both")) | keys_unsorted' "${{ inputs.implementations_file }}")
+          ALL_SERVERS=$(jq -c 'with_entries(select(.value.role == "server" or .value.role == "both")) | keys_unsorted' "${{ inputs.implementations_file }}")
+          if [ -n "$SERVER_FILTER" ]; then
+            SERVERS=$(jq -c -n --argjson all "$ALL_SERVERS" --arg wanted "$SERVER_FILTER" \
+              '$all | map(select(. as $s | ($wanted | split(",")) | index($s)))')
+          else
+            SERVERS="$ALL_SERVERS"
+          fi
           echo $SERVERS
           echo "servers=$SERVERS" >> $GITHUB_OUTPUT
       - name: Determine clients
@@ -62,8 +74,12 @@ jobs:
           echo "clients=$CLIENTS" >> $GITHUB_OUTPUT
       - name: Determine Docker images
         id: set-images
+        env:
+          SERVERS: ${{ steps.set-servers.outputs.servers }}
+          CLIENTS: ${{ steps.set-clients.outputs.clients }}
         run: |
-          IMAGES=$(jq -c 'keys_unsorted' "${{ inputs.implementations_file }}")
+          IMAGES=$(jq -c -n --argjson servers "$SERVERS" --argjson clients "$CLIENTS" \
+            '($servers + $clients) | unique')
           echo $IMAGES
           echo "images=$IMAGES" >> $GITHUB_OUTPUT
   docker-pull-tools:
@@ -147,6 +163,11 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           pattern: results-*
+      - name: Fetch prior result for partial re-run merge
+        if: ${{ inputs.server != '' && vars.VERCEL_PROJECT_URL != '' }}
+        run: |
+          curl -fsSL "${{ vars.VERCEL_PROJECT_URL }}/logs/${{ needs.config.outputs.protocol }}/logs_latest/result.json" \
+            -o prior_result.json || true
       - name: Aggregate results
         run: |
           mv results-*/*.json .
@@ -155,6 +176,7 @@ jobs:
             --server ${{ join(fromJson(needs.config.outputs.servers), ',') }} \
             --client ${{ join(fromJson(needs.config.outputs.clients), ',') }} \
             --log-dir=${{ needs.config.outputs.logname }} \
+            $([ -f prior_result.json ] && echo --merge-with prior_result.json) \
             --output result.json
       - name: Print result
         run: jq '.' result.json
