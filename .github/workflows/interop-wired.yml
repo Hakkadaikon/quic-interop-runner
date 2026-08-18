@@ -1,0 +1,27 @@
+name: Wired Interop
+on:
+  repository_dispatch:
+    types: [ wired-updated ]
+  workflow_dispatch:
+
+jobs:
+  quic:
+    uses: ./.github/workflows/interop.yml
+    with:
+      protocol: quic
+      implementations_file: implementations_quic.json
+      upload_dir: ${{ vars.LOG_DIR_QUIC }}
+      upload_results: false
+      run_measurements: true
+      server: wired
+    secrets: inherit
+  webtransport:
+    uses: ./.github/workflows/interop.yml
+    with:
+      protocol: webtransport
+      implementations_file: implementations_webtransport.json
+      upload_dir: ${{ vars.LOG_DIR_WEBTRANSPORT }}
+      upload_results: false
+      run_measurements: false
+      server: wired
+    secrets: inherit
