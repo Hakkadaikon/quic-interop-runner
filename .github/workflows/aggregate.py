@@ -14,11 +14,35 @@ def get_args():
     parser.add_argument("-t", "--start-time", help="start time")
     parser.add_argument("-l", "--log-dir", help="log directory")
     parser.add_argument("-o", "--output", help="output file (stdout if not set)")
+    parser.add_argument(
+        "-m",
+        "--merge-with",
+        help="prior aggregated result.json to fill in server/client pairs "
+        "not covered by this run (e.g. a partial re-run limited to one server)",
+    )
     return parser.parse_args()
 
 
-servers = get_args().server.split(",")
-clients = get_args().client.split(",")
+args = get_args()
+run_servers = args.server.split(",")
+clients = args.client.split(",")
+
+prior = None
+if args.merge_with:
+    try:
+        with open(args.merge_with) as f:
+            prior = json.load(f)
+    except IOError:
+        print("Warning: Couldn't open merge-with file " + args.merge_with)
+
+# The full server list is this run's servers plus any extra servers already
+# present in the prior result (so a partial run doesn't drop them).
+servers = list(run_servers)
+if prior:
+    for server in prior.get("servers", []):
+        if server not in servers:
+            servers.append(server)
+
 result = {
     "servers": servers,
     "clients": clients,
@@ -26,19 +50,42 @@ result = {
     "start_time": int(get_args().start_time),
     "results": [],
     "measurements": [],
-    "tests": {},
-    "urls": {},
+    "tests": dict(prior["tests"]) if prior else {},
+    "urls": dict(prior["urls"]) if prior else {},
 }
+if prior:
+    if "end_time" in prior:
+        result["end_time"] = prior["end_time"]
+    if "quic_version" in prior:
+        result["quic_version"] = prior["quic_version"]
+
+
+def prior_entry(server: str, client: str, cat: str):
+    if not prior:
+        return None
+    try:
+        client_idx = prior["clients"].index(client)
+        server_idx = prior["servers"].index(server)
+    except ValueError:
+        return None
+    idx = client_idx * len(prior["servers"]) + server_idx
+    entries = prior.get(cat, [])
+    return entries[idx] if idx < len(entries) else None
 
 
 def parse(server: str, client: str, cat: str):
+    if server not in run_servers:
+        entry = prior_entry(server, client, cat)
+        result[cat].append(entry if entry is not None else [])
+        return
     filename = server + "_" + client + "_" + cat + ".json"
     try:
         with open(filename) as f:
             data = json.load(f)
     except IOError:
         print("Warning: Couldn't open file " + filename)
-        result[cat].append([])
+        entry = prior_entry(server, client, cat)
+        result[cat].append(entry if entry is not None else [])
         return
     parse_data(server, client, cat, data)
 
