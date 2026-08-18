@@ -1,7 +1,5 @@
 name: Wired Interop
 on:
-  repository_dispatch:
-    types: [ wired-updated ]
   workflow_dispatch:
 
 jobs:
