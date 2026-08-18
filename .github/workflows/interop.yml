@@ -185,3 +185,31 @@ jobs:
             jq '. += [ "${{ needs.config.outputs.logname }}" ]' logs.json | sponge logs.json
             rm latest || true
             ln -s ${{ needs.config.outputs.logname }} latest
+      - name: Deploy latest result to Vercel
+        if: ${{ vars.VERCEL_PROJECT_ID != '' }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          # This job only produces results for one protocol; fetch the other
+          # protocol's currently-deployed results so the deploy below doesn't
+          # wipe them out.
+          for other in quic webtransport; do
+            [ "$other" = "${{ needs.config.outputs.protocol }}" ] && continue
+            mkdir -p "web/logs/$other/logs_latest" "web/logs/$other/latest"
+            curl -fsSL "${{ vars.VERCEL_PROJECT_URL }}/logs/$other/logs_latest/result.json" \
+              -o "web/logs/$other/logs_latest/result.json" || continue
+            curl -fsSL "${{ vars.VERCEL_PROJECT_URL }}/logs/$other/logs.json" \
+              -o "web/logs/$other/logs.json" || true
+            cp "web/logs/$other/logs_latest/result.json" "web/logs/$other/latest/result.json"
+          done
+
+          PROTO_DIR=web/logs/${{ needs.config.outputs.protocol }}
+          mkdir -p "$PROTO_DIR/logs_latest" "$PROTO_DIR/latest"
+          cp result.json "$PROTO_DIR/logs_latest/result.json"
+          cp result.json "$PROTO_DIR/latest/result.json"
+          echo '["logs_latest"]' > "$PROTO_DIR/logs.json"
+
+          npx --yes vercel pull --yes --environment=production --token="$VERCEL_TOKEN" web
+          npx --yes vercel deploy --prod --token="$VERCEL_TOKEN" web
