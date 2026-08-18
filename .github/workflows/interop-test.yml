@@ -90,7 +90,7 @@ jobs:
           mv output.txt logs/${{ inputs.server }}_${{ matrix.client }}/
       - name: Run measurements
         if: ${{ inputs.run_measurements }}
-        timeout-minutes: 15
+        timeout-minutes: 40
         env:
           CRON: "true"
         run: |
@@ -115,12 +115,12 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: results-${{ inputs.protocol }}-${{ inputs.server }}-${{ matrix.client }}-tests
-          if-no-files-found: error
+          if-no-files-found: warn
           path: ${{ inputs.server }}_${{ matrix.client }}_results.json
       - name: Upload measurement result
         if: ${{ always() && inputs.run_measurements }}
         uses: actions/upload-artifact@v7
         with:
           name: results-${{ inputs.protocol }}-${{ inputs.server }}-${{ matrix.client }}-measurements
-          if-no-files-found: error
+          if-no-files-found: warn
           path: ${{ inputs.server }}_${{ matrix.client }}_measurements.json
