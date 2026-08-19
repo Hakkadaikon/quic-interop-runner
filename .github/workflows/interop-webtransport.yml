@@ -1,8 +1,6 @@
 name: WebTransport Interop
 on:
-  schedule:
-    # Every 12h at 09:15 UTC and 21:15 UTC.
-    - cron: "15 9,21 * * *"
+  workflow_dispatch:
 
 jobs:
   run:
