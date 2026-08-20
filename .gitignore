@@ -3,6 +3,7 @@ logs/
 logs_*/
 *.json
 !implementations_*.json
+!web/vercel.json
 web/latest
 
 *.egg-info/

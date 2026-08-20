@@ -1,0 +1,7 @@
+{
+  "outputDirectory": ".",
+  "rewrites": [
+    { "source": "/quic", "destination": "/index.html" },
+    { "source": "/webtransport", "destination": "/index.html" }
+  ]
+}
